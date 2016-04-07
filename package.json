@@ -1,9 +1,13 @@
 {
   "private": true,
   "dependencies": {
-    "jscs": "2.2.1"
+    "jscs": "2.2.1",
+    "mongodb": "^2.1.11"
   },
   "scripts": {
     "lint": "jscs ."
+  },
+  "devDependencies": {
+    "bluebird": "^3.3.4"
   }
 }

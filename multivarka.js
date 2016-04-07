@@ -1,5 +1,6 @@
-var MongoClient = require('mongodb').MongoClient;
-var assert = require('assert');
+var Promise = require('bluebird');
+var MongoDB = Promise.promisifyAll(require('mongodb'));
+var MongoClient = MongoDB.MongoClient;
 
 var multivarka = {
     server: function(url){
@@ -8,26 +9,17 @@ var multivarka = {
             this.url = url;
             return this;
         }
-        else{
-            console.error('Error: server argument is not valid');
-        }
     },
     collection: function(store){
         if (store) {
             this.store = store;
             return this;
         }
-        else{
-            console.error('Error: collection argument is not valid');
-        }
     },
     where: function(field){
         if (field){
             this.field = field;
             return this;
-        }
-        else{
-            console.error('Error:  argument is not valid')
         }
     },
     lessThan: function(quantity){
@@ -39,11 +31,7 @@ var multivarka = {
         return this;
     },
     include: function(groups){
-        if (this.isNot) {
-            this.query[this.field] = {$nin: groups};
-        }else{
-            this.query[this.field] = {$in: groups};
-        }
+        this.query[this.field] = (this.isNot) ? {$nin: groups} : {$in: groups};
         return this;
     },
     not: function(){
@@ -51,11 +39,7 @@ var multivarka = {
         return this;
     },
     equal: function(value){
-        if (this.isNot) {
-            this.query[this.field] = {$ne: value};
-        }else{
-            this.query[this.field] = {$eq: value};
-        }
+        this.query[this.field] = (this.isNot) ? {$ne: value} : {$eq: value};
         return this;
     },
     set: function(key, value){
@@ -64,52 +48,71 @@ var multivarka = {
         return this;
     },
     insert: function(element, callback){
-        var self = this;
-        MongoClient.connect(this.url, function(err, db) {
-            assert.equal(null, err);
-            db.collection(self.store).insertOne(element, function(err, result) {
-                assert.equal(err, null);
-                console.log('Inserted a element into the ' + self.store + ' collection.');
-                callback(err, result);
+        MongoClient.connect(this.url).then( db =>  {
+            db.collection(this.store).insertOne(element).then( result => {
+                console.log('Inserted a element into the ' + this.store + ' collection.');
                 db.close();
-            });
+                callback(null, result);
+            }).catch(err => {
+                db.close();
+                callback(err);
+            });;
+        }).catch( err => {
+            callback(err);
         });
     },
     update: function(callback){
-        var self = this;
-        MongoClient.connect(this.url, function(err, db) {
-            assert.equal(null, err);
-            console.log(self.query)
-            db.collection(self.store).updateMany(self.query, self.updated, function(err, result) {
-                assert.equal(err, null);
-                console.log('Updated a elements into the ' + self.store + ' collection.');
-                callback(err, result);
+        MongoClient.connect(this.url).then( db =>  {
+            db.collection(this.store).updateMany(this.query, this.updated).then( result => {
+                console.log('Updated a elements into the ' + this.store + ' collection.');
                 db.close();
-            });
+                callback(null, result);
+            }).catch(err => {
+                db.close();
+                callback(err);
+            });;
+        }).catch( err => {
+            callback(err);
         });
     },
     remove: function(callback){
-        var self = this;
-        MongoClient.connect(this.url, function(err, db) {
-            assert.equal(null, err);
-            db.collection(self.store).deleteMany(self.query, function(err, result) {
-                assert.equal(err, null);
-                console.log('Deleted a element into the ' + self.store + ' collection.');
-                callback(err, result);
+        MongoClient.connect(this.url).then( db =>  {
+            db.collection(this.store).deleteMany(this.query).then( result => {
+                console.log('Deleted a element into the ' + this.store + ' collection.');
                 db.close();
-            });
+                callback(null, result);
+            }).catch(err => {
+                db.close();
+                callback(err);
+            });;
+        }).catch( err => {
+            callback(err);
         });
     },
     find: function(callback){
-        var self = this;
-        MongoClient.connect(this.url, function(err, db) {
-            assert.equal(null, err);
-            var cursor =db.collection(self.store).find(self.query);
-            cursor.toArray(function(err, result){
-                assert.equal(err, null);
-                callback(err, result);
+        MongoClient.connect(this.url).then( db =>  {
+            db.collection(this.store).find(this.query).toArray().then( result => {
+                callback(null, result);
                 db.close();
-            })
+            }).catch(err => {
+                db.close();
+                callback(err);
+            });
+        }).catch( err => {
+            callback(err);
+        });
+    },
+    request: function(req, callback){
+        MongoClient.connect(this.url).then( db =>  {
+            req.then( result => {
+                callback(null, result);
+                db.close();
+            }).catch(err => {
+                db.close();
+                callback(err);
+            });
+        }).catch( err => {
+            callback(err);
         });
     },
 };
